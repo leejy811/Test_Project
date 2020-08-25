@@ -1,18 +1,21 @@
 using UnityEngine;
 using UnityEngine.Events;
 
+/*CharacterController2D
+ * 해당 스크립트는 플레이어의 기본적인 물리적 이동에 관하여 실제적인 연산과
+ * 판단을 하기위한 스크립트임
+*/
 public class CharacterController2D : MonoBehaviour
 {
-	[SerializeField] private float m_JumpForce = 13f;							// Amount of force added when the player jumps.
-	[Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			// Amount of maxSpeed applied to crouching movement. 1 = 100%
-    [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;
-	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	// How much to smooth out the movement
-	[SerializeField] private bool m_AirControl = false;							// Whether or not a player can steer while jumping;
+	[SerializeField] private float m_JumpForce = 13f;							//플레이어의 점프하는 힘
+	[Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
+    [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
+	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
+	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
 	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
 	[SerializeField] private Transform m_CeilingCheck;                          // A position marking where to check for ceilings
     [SerializeField] private Collider2D m_CrouchDisableCollider;				// A collider that will be disabled when crouching
-    [SerializeField] private int m_jumpCount = 2;
 
 	const float k_GroundedRadius = .2f; // Radius of the overlap circle to determine if grounded
 	private bool m_Grounded;            // Whether or not the player is grounded.
@@ -42,14 +45,6 @@ public class CharacterController2D : MonoBehaviour
 		if (OnCrouchEvent == null)
 			OnCrouchEvent = new BoolEvent();
 	}
-
-    private void Update()
-    {
-        if (m_Grounded)
-        {
-            m_jumpCount = 2;
-        }
-    }
 
 	private void FixedUpdate()
 	{
@@ -139,15 +134,11 @@ public class CharacterController2D : MonoBehaviour
 			}
 		}
 		// If the player should jump...
-		if ((m_Grounded && jump) || (m_jumpCount == 1 && jump))
+		if ((m_Grounded && jump))
 		{
 			// Add a vertical force to the player.
 			m_Grounded = false;
-            if(m_jumpCount > 0)
-            {
-                m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
-                m_jumpCount--;
-            }
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
 		}
 	}
 
