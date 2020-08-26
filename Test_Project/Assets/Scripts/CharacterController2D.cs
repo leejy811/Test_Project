@@ -10,6 +10,7 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private float m_JumpForce = 13f;							//플레이어의 점프하는 힘
 	[Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
+    [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
 	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
 	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
@@ -22,6 +23,7 @@ public class CharacterController2D : MonoBehaviour
 	const float k_CeilingRadius = .2f; // Radius of the overlap circle to determine if the player can stand up
 	private Rigidbody2D m_Rigidbody2D;
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
+    private bool m_JumpFacingRight;
     private Vector3 m_Velocity = Vector3.zero;
 
     [Header("Events")]
@@ -78,8 +80,8 @@ public class CharacterController2D : MonoBehaviour
 			}
 		}
 
-		//only control the player if grounded or airControl is turned on
-		if (m_Grounded || m_AirControl)
+        //only control the player if grounded or airControl is turned on
+        if (m_Grounded || m_AirControl)
 		{
 
 			// If crouching
@@ -114,6 +116,11 @@ public class CharacterController2D : MonoBehaviour
             {
                 move *= m_DashSpeed;
             }
+
+            if((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
+            {
+                move *= m_JumpSpeed;
+            }
             
 			// Move the character by finding the target velocity
 			Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
@@ -133,14 +140,24 @@ public class CharacterController2D : MonoBehaviour
 				Flip();
 			}
 		}
-		// If the player should jump...
-		if ((m_Grounded && jump))
-		{
-			// Add a vertical force to the player.
-			m_Grounded = false;
+
+        // If the player should jump...
+        if ((m_Grounded && jump))
+        {
+            // Add a vertical force to the player.
+            m_Grounded = false;
             m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
-		}
-	}
+            move *= m_JumpSpeed;
+            if (move > 0)
+            {
+                m_JumpFacingRight = true;
+            }
+            else if (move < 0)
+            {
+                m_JumpFacingRight = false;
+            }
+        }
+    }
 
 
 	private void Flip()
