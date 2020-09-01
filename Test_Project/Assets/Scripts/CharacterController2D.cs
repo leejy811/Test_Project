@@ -173,6 +173,7 @@ public class CharacterController2D : MonoBehaviour
                 {
                     m_Rigidbody2D.AddForce(new Vector2(-1, 0) * m_JumpDashForce, ForceMode2D.Impulse);
                 }
+                m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
             }
             m_JumpCount--;
         }
