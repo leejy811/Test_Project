@@ -7,8 +7,9 @@ using UnityEngine.Events;
 */
 public class CharacterController2D : MonoBehaviour
 {
-	[SerializeField] private float m_JumpForce = 13f;							//플레이어의 점프하는 힘
-	[Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
+	[SerializeField] private float m_JumpForce = 13f;                           //플레이어의 점프하는 힘
+    [SerializeField] private float m_JumpDashForce = 25f;
+    [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
     [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
 	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
@@ -25,6 +26,7 @@ public class CharacterController2D : MonoBehaviour
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
     private bool m_JumpFacingRight;
     private Vector3 m_Velocity = Vector3.zero;
+    private int m_JumpCount = 2;
 
     [Header("Events")]
 	[Space]
@@ -46,6 +48,8 @@ public class CharacterController2D : MonoBehaviour
 
 		if (OnCrouchEvent == null)
 			OnCrouchEvent = new BoolEvent();
+
+        m_JumpCount = 0;
 	}
 
 	private void FixedUpdate()
@@ -61,6 +65,7 @@ public class CharacterController2D : MonoBehaviour
 			if (colliders[i].gameObject != gameObject)
 			{
 				m_Grounded = true;
+                m_JumpCount = 2;
 				if (!wasGrounded)
 					OnLandEvent.Invoke();
 			}
@@ -142,20 +147,34 @@ public class CharacterController2D : MonoBehaviour
 		}
 
         // If the player should jump...
-        if ((m_Grounded && jump))
+        if ((m_Grounded && jump) || (m_JumpCount > 0 && jump))
         {
             // Add a vertical force to the player.
             m_Grounded = false;
-            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
-            move *= m_JumpSpeed;
-            if (move > 0)
+            if (m_JumpCount == 2)
             {
-                m_JumpFacingRight = true;
+                m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
+                if (move > 0)
+                {
+                    m_JumpFacingRight = true;
+                }
+                else if (move < 0)
+                {
+                    m_JumpFacingRight = false;
+                }
             }
-            else if (move < 0)
+            else if(m_JumpCount == 1)
             {
-                m_JumpFacingRight = false;
+                if (m_FacingRight)
+                {
+                    m_Rigidbody2D.AddForce(new Vector2(1, 0) * m_JumpDashForce, ForceMode2D.Impulse);
+                }
+                else if (!m_FacingRight)
+                {
+                    m_Rigidbody2D.AddForce(new Vector2(-1, 0) * m_JumpDashForce, ForceMode2D.Impulse);
+                }
             }
+            m_JumpCount--;
         }
     }
 
