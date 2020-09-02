@@ -117,7 +117,7 @@ public class CharacterController2D : MonoBehaviour
 				}
 			}
 
-            if (dash && m_Grounded)
+            if (dash && m_Grounded && !crouch)
             {
                 move *= m_DashSpeed;
             }
