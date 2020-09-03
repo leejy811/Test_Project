@@ -9,9 +9,10 @@ public class CharacterController2D : MonoBehaviour
 {
 	[SerializeField] private float m_JumpForce = 13f;                           //플레이어의 점프하는 힘
     [SerializeField] private float m_JumpDashForce = 25f;
+    [SerializeField] private float m_DashToJumpForce = 16f;
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
-    [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
     [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
+    [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
 	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
 	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
@@ -27,6 +28,7 @@ public class CharacterController2D : MonoBehaviour
     private bool m_JumpFacingRight;
     private Vector3 m_Velocity = Vector3.zero;
     private int m_JumpCount = 2;
+    private float m_TimeToDash = 0f;
 
     [Header("Events")]
 	[Space]
@@ -75,6 +77,10 @@ public class CharacterController2D : MonoBehaviour
 
 	public void Move(float move, bool crouch, bool jump, bool dash)
 	{
+        if (m_Grounded)
+        {
+            m_JumpForce = 13f;
+        }
 		// If crouching, check to see if the character can stand up
 		if (!crouch)
 		{
@@ -120,6 +126,24 @@ public class CharacterController2D : MonoBehaviour
             if (dash && m_Grounded && !crouch)
             {
                 move *= m_DashSpeed;
+                if (move != 0)
+                {
+                    m_TimeToDash += Time.fixedDeltaTime;
+                }
+                else
+                {
+                    m_TimeToDash = 0f;
+                }
+
+                if (m_TimeToDash > 0.75f)
+                {
+                    m_JumpForce = m_DashToJumpForce;
+                }
+            }
+            else if(!dash)
+            {
+                m_TimeToDash = 0f;
+                m_JumpForce = 13f;
             }
 
             if((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
@@ -162,16 +186,17 @@ public class CharacterController2D : MonoBehaviour
                 {
                     m_JumpFacingRight = false;
                 }
+                m_TimeToDash = 0f;
             }
             else if(m_JumpCount == 1)
             {
                 if (m_FacingRight)
                 {
-                    m_Rigidbody2D.AddForce(new Vector2(1, 0) * m_JumpDashForce, ForceMode2D.Impulse);
+                    m_Rigidbody2D.AddForce(Vector2.right * m_JumpDashForce, ForceMode2D.Impulse);
                 }
                 else if (!m_FacingRight)
                 {
-                    m_Rigidbody2D.AddForce(new Vector2(-1, 0) * m_JumpDashForce, ForceMode2D.Impulse);
+                    m_Rigidbody2D.AddForce(Vector2.left * m_JumpDashForce, ForceMode2D.Impulse);
                 }
                 m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
             }
