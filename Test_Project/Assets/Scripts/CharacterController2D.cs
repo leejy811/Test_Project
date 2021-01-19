@@ -10,11 +10,12 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private float m_JumpForce = 13f;                           //플레이어의 점프하는 힘
     [SerializeField] private float m_JumpDashForce = 25f;
     [SerializeField] private float m_DashToJumpForce = 16f;
-    [SerializeField] private float m_SlideForce = 15f;
     [SerializeField] private float m_TimeToDashJump = 0.75f;
+    [SerializeField] private float m_maxSlideTime = 1.5f;
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
     [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
+    [Range(0, 3)] [SerializeField] private float m_SlideSpeed = 2f;            //슬라이딩할때의 속도 1 = 100% 이다
     [Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
 	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
@@ -31,7 +32,9 @@ public class CharacterController2D : MonoBehaviour
     private Vector3 m_Velocity = Vector3.zero;
     private int m_JumpCount = 2;
     private float m_TimeToDash = 0f;
+    private float m_TimeToSlide = 0f;
 
+    /*
     [Header("Events")]
 	[Space]
 
@@ -41,13 +44,17 @@ public class CharacterController2D : MonoBehaviour
 	[System.Serializable]
 	public class BoolEvent : UnityEvent<bool> { }
 
-	public BoolEvent OnCrouchEvent;
+	public BoolEvent OnCrouchEvent; */
+
+    public PlayerMovement m_playerMovement;
 	private bool m_wasCrouching = false;
 
 	private void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
+        m_playerMovement = GetComponent<PlayerMovement>();
 
+        /*
 		if (OnLandEvent == null)
 			OnLandEvent = new UnityEvent();
 
@@ -55,7 +62,7 @@ public class CharacterController2D : MonoBehaviour
             OnAirEvent = new UnityEvent();
 
         if (OnCrouchEvent == null)
-			OnCrouchEvent = new BoolEvent();
+			OnCrouchEvent = new BoolEvent(); */
 
         m_JumpCount = 0;
 	}
@@ -74,14 +81,14 @@ public class CharacterController2D : MonoBehaviour
 			{
 				m_Grounded = true;
                 m_JumpCount = 2;
-				if (!wasGrounded)
-					OnLandEvent.Invoke();
-			}
+                if (!wasGrounded)
+                    m_playerMovement.OnLanding();
+            }
 		}
 
         if (!m_Grounded)
-            OnAirEvent.Invoke();
-	}
+            m_playerMovement.OnAir();
+    }
 
 
 	public void Move(float move, bool crouch, bool jump, bool dash, bool slide)
@@ -92,7 +99,7 @@ public class CharacterController2D : MonoBehaviour
         }
 
 		// If crouching, check to see if the character can stand up
-		if (!crouch)
+		if (!crouch && !slide)
 		{
 			// If the character has a ceiling preventing them from standing up, keep them crouching
 			if (Physics2D.OverlapCircle(m_CeilingCheck.position, k_CeilingRadius, m_WhatIsGround))
@@ -102,7 +109,7 @@ public class CharacterController2D : MonoBehaviour
 		}
 
         //only control the player if grounded or airControl is turned on
-        if ((m_Grounded || m_AirControl) && !slide)
+        if ((m_Grounded || m_AirControl))
 		{
 
 			// If crouching
@@ -111,7 +118,7 @@ public class CharacterController2D : MonoBehaviour
 				if (!m_wasCrouching)
 				{
 					m_wasCrouching = true;
-					OnCrouchEvent.Invoke(true);
+                    m_playerMovement.OnCrouching(true);
 				}
 
 				// Reduce the speed by the crouchSpeed multiplier
@@ -129,9 +136,31 @@ public class CharacterController2D : MonoBehaviour
 				if (m_wasCrouching)
 				{
 					m_wasCrouching = false;
-					OnCrouchEvent.Invoke(false);
-				}
-			}
+                    m_playerMovement.OnCrouching(false);
+                }
+            }
+
+            if (slide && m_Grounded)
+            {
+                if (m_TimeToSlide > m_maxSlideTime)
+                {
+                    // Enable the collider when not sliding
+                    if (m_CrouchDisableCollider != null)
+                        m_CrouchDisableCollider.enabled = true;
+                    m_playerMovement.OffSliding();
+                    m_TimeToSlide = 0f;
+                }
+                else
+                {
+                    dash = false;
+                    m_TimeToSlide += Time.fixedDeltaTime;
+                    move *= m_SlideSpeed;
+
+                    // Disable one of the colliders when sliding
+                    if (m_CrouchDisableCollider != null)
+                        m_CrouchDisableCollider.enabled = false;
+                }
+            }
 
             if (dash && m_Grounded && !crouch)
             {
@@ -181,7 +210,7 @@ public class CharacterController2D : MonoBehaviour
 		}
 
         // If the player should jump...
-        if ((m_Grounded && jump) || (m_JumpCount == 1 && jump))
+        if (((m_Grounded && jump) || (m_JumpCount == 1 && jump)) && !slide)
         {
             // Add a vertical force to the player.
             m_Grounded = false;
@@ -211,18 +240,6 @@ public class CharacterController2D : MonoBehaviour
                 m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
             }
             m_JumpCount--;
-        }
-
-        if(slide && m_Grounded)
-        {
-            if (m_FacingRight)
-            {
-                m_Rigidbody2D.AddForce(Vector2.right * m_SlideForce, ForceMode2D.Force);
-            }
-            else if (!m_FacingRight)
-            {
-                m_Rigidbody2D.AddForce(Vector2.left * m_SlideForce, ForceMode2D.Force);
-            }
         }
     }
 

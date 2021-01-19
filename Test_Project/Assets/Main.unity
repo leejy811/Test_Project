@@ -534,11 +534,12 @@ MonoBehaviour:
   m_JumpForce: 17
   m_JumpDashForce: 25
   m_DashToJumpForce: 16
-  m_SlideForce: 15
   m_TimeToDashJump: 0.75
+  m_maxSlideTime: 1.5
   m_CrouchSpeed: 0.4
   m_JumpSpeed: 0.625
   m_DashSpeed: 1.5
+  m_SlideSpeed: 2
   m_MovementSmoothing: 0.05
   m_AirControl: 1
   m_WhatIsGround:
@@ -547,48 +548,7 @@ MonoBehaviour:
   m_GroundCheck: {fileID: 1007352555}
   m_CeilingCheck: {fileID: 1574803884}
   m_CrouchDisableCollider: {fileID: 820667356}
-  OnLandEvent:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 820667357}
-        m_MethodName: OnLanding
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  OnAirEvent:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 820667357}
-        m_MethodName: Onair
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  OnCrouchEvent:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 820667357}
-        m_MethodName: OnCrouching
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+  m_playerMovement: {fileID: 820667357}
 --- !u!58 &820667355
 CircleCollider2D:
   m_ObjectHideFlags: 0

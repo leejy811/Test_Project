@@ -28,6 +28,7 @@ public class PlayerMovement : MonoBehaviour {
 			animator.SetBool("IsJumping", true);
 		}
 
+        /*
         if (!dash) {
             if (Input.GetButtonDown("Crouch"))
             {
@@ -35,13 +36,11 @@ public class PlayerMovement : MonoBehaviour {
             } else if (Input.GetButtonUp("Crouch"))
             {
                 crouch = false;
-                if (slide)
-                {
-                    slide = false;
-                    dash = true;
-                }
+                //if (slide)
+                //    slide = false;
+                //    dash = true;
             }
-        }
+        }*/
 
         if (!crouch)
         {
@@ -52,10 +51,8 @@ public class PlayerMovement : MonoBehaviour {
             else if (Input.GetKeyUp(KeyCode.LeftShift))
             {
                 dash = false;
-                if (slide)
-                {
-                    slide = false;
-                }
+                //if (slide)
+                //    slide = false;
             }
         }
 
@@ -63,11 +60,23 @@ public class PlayerMovement : MonoBehaviour {
         {
             if (Input.GetButtonDown("Crouch"))
             {
+                Debug.Log("Slide");
                 slide = true;
             }
             else if (Input.GetButtonUp("Crouch"))
             {
                 slide = false;
+            }
+        }
+        else
+        {
+            if (Input.GetButtonDown("Crouch"))
+            {
+                crouch = true;
+            }
+            else if (Input.GetButtonUp("Crouch"))
+            {
+                crouch = false;
             }
         }
     }
@@ -77,7 +86,7 @@ public class PlayerMovement : MonoBehaviour {
 		animator.SetBool("IsJumping", false);
 	}
 
-    public void Onair()
+    public void OnAir()
     {
         animator.SetBool("IsJumping", true);
     }
@@ -86,6 +95,11 @@ public class PlayerMovement : MonoBehaviour {
 	{
 		animator.SetBool("IsCrouching", isCrouching);
 	}
+
+    public void OffSliding()
+    {
+        slide = false;
+    }
 
 	void FixedUpdate ()
 	{
