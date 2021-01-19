@@ -10,10 +10,12 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private float m_JumpForce = 13f;                           //플레이어의 점프하는 힘
     [SerializeField] private float m_JumpDashForce = 25f;
     [SerializeField] private float m_DashToJumpForce = 16f;
+    [SerializeField] private float m_SlideForce = 15f;
+    [SerializeField] private float m_TimeToDashJump = 0.75f;
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
     [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
-	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
+    [Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
 	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
 	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
@@ -34,6 +36,7 @@ public class CharacterController2D : MonoBehaviour
 	[Space]
 
 	public UnityEvent OnLandEvent;
+    public UnityEvent OnAirEvent;
 
 	[System.Serializable]
 	public class BoolEvent : UnityEvent<bool> { }
@@ -48,7 +51,10 @@ public class CharacterController2D : MonoBehaviour
 		if (OnLandEvent == null)
 			OnLandEvent = new UnityEvent();
 
-		if (OnCrouchEvent == null)
+        if (OnAirEvent == null)
+            OnAirEvent = new UnityEvent();
+
+        if (OnCrouchEvent == null)
 			OnCrouchEvent = new BoolEvent();
 
         m_JumpCount = 0;
@@ -72,15 +78,19 @@ public class CharacterController2D : MonoBehaviour
 					OnLandEvent.Invoke();
 			}
 		}
+
+        if (!m_Grounded)
+            OnAirEvent.Invoke();
 	}
 
 
-	public void Move(float move, bool crouch, bool jump, bool dash)
+	public void Move(float move, bool crouch, bool jump, bool dash, bool slide)
 	{
         if (m_Grounded)
         {
-            m_JumpForce = 13f;
+            m_JumpForce = 17f;
         }
+
 		// If crouching, check to see if the character can stand up
 		if (!crouch)
 		{
@@ -92,7 +102,7 @@ public class CharacterController2D : MonoBehaviour
 		}
 
         //only control the player if grounded or airControl is turned on
-        if (m_Grounded || m_AirControl)
+        if ((m_Grounded || m_AirControl) && !slide)
 		{
 
 			// If crouching
@@ -135,7 +145,7 @@ public class CharacterController2D : MonoBehaviour
                     m_TimeToDash = 0f;
                 }
 
-                if (m_TimeToDash > 0.75f)
+                if (m_TimeToDash > m_TimeToDashJump)
                 {
                     m_JumpForce = m_DashToJumpForce;
                 }
@@ -143,16 +153,16 @@ public class CharacterController2D : MonoBehaviour
             else if(!dash)
             {
                 m_TimeToDash = 0f;
-                m_JumpForce = 13f;
+                m_JumpForce = 17f;
             }
 
             if((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
             {
                 move *= m_JumpSpeed;
             }
-            
-			// Move the character by finding the target velocity
-			Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
+
+            // Move the character by finding the target velocity
+            Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
 			// And then smoothing it out and applying it to the character
 			m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
 
@@ -171,7 +181,7 @@ public class CharacterController2D : MonoBehaviour
 		}
 
         // If the player should jump...
-        if ((m_Grounded && jump) || (m_JumpCount > 0 && jump))
+        if ((m_Grounded && jump) || (m_JumpCount == 1 && jump))
         {
             // Add a vertical force to the player.
             m_Grounded = false;
@@ -201,6 +211,18 @@ public class CharacterController2D : MonoBehaviour
                 m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
             }
             m_JumpCount--;
+        }
+
+        if(slide && m_Grounded)
+        {
+            if (m_FacingRight)
+            {
+                m_Rigidbody2D.AddForce(Vector2.right * m_SlideForce, ForceMode2D.Force);
+            }
+            else if (!m_FacingRight)
+            {
+                m_Rigidbody2D.AddForce(Vector2.left * m_SlideForce, ForceMode2D.Force);
+            }
         }
     }
 
