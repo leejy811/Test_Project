@@ -9,11 +9,11 @@ public class PlayerMovement : MonoBehaviour {
 
 	public float runSpeed = 40f;
 
-	float horizontalMove = 0f;
-	bool jump = false;
-	bool crouch = false;
-    bool dash = false;
-    bool slide = false;
+    [SerializeField] float horizontalMove = 0f;
+    [SerializeField] bool jump = false;
+    [SerializeField] bool crouch = false;
+    [SerializeField] bool dash = false;
+    [SerializeField] bool slide = false;
 
 	// Update is called once per frame
 	void Update () {
@@ -28,20 +28,6 @@ public class PlayerMovement : MonoBehaviour {
 			animator.SetBool("IsJumping", true);
 		}
 
-        /*
-        if (!dash) {
-            if (Input.GetButtonDown("Crouch"))
-            {
-                crouch = true;
-            } else if (Input.GetButtonUp("Crouch"))
-            {
-                crouch = false;
-                //if (slide)
-                //    slide = false;
-                //    dash = true;
-            }
-        }*/
-
         if (!crouch)
         {
             if (Input.GetKeyDown(KeyCode.LeftShift))
@@ -51,8 +37,6 @@ public class PlayerMovement : MonoBehaviour {
             else if (Input.GetKeyUp(KeyCode.LeftShift))
             {
                 dash = false;
-                //if (slide)
-                //    slide = false;
             }
         }
 
@@ -60,13 +44,17 @@ public class PlayerMovement : MonoBehaviour {
         {
             if (Input.GetButtonDown("Crouch"))
             {
-                Debug.Log("Slide");
                 slide = true;
             }
             else if (Input.GetButtonUp("Crouch"))
             {
                 slide = false;
             }
+        }
+        else if (slide)
+        {
+            crouch = true;
+            slide = false;
         }
         else
         {
@@ -81,7 +69,14 @@ public class PlayerMovement : MonoBehaviour {
         }
     }
 
-	public void OnLanding ()
+    void FixedUpdate()
+    {
+        // Move our character
+        controller.Move(horizontalMove * Time.fixedDeltaTime, crouch, jump, dash, slide);
+        jump = false;
+    }
+
+    public void OnLanding ()
 	{
 		animator.SetBool("IsJumping", false);
 	}
@@ -91,20 +86,23 @@ public class PlayerMovement : MonoBehaviour {
         animator.SetBool("IsJumping", true);
     }
 
-	public void OnCrouching (bool isCrouching)
+	public void OnCrouchAnim (bool isCrouching)
 	{
 		animator.SetBool("IsCrouching", isCrouching);
 	}
 
-    public void OffSliding()
+    public void OnCrouching(bool isCrouching)
     {
-        slide = false;
+        crouch = isCrouching ? true : false;
     }
 
-	void FixedUpdate ()
-	{
-		// Move our character
-		controller.Move(horizontalMove * Time.fixedDeltaTime, crouch, jump, dash, slide);
-		jump = false;
-	}
+    public void OnSliding(bool isSliding)
+    {
+        slide = isSliding ? true : false;
+    }
+
+    public void OnDashing(bool isDashing)
+    {
+        dash = isDashing ? true : false;
+    }
 }

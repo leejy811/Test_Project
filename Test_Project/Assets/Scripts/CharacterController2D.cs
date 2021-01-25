@@ -28,23 +28,12 @@ public class CharacterController2D : MonoBehaviour
 	const float k_CeilingRadius = .2f; // Radius of the overlap circle to determine if the player can stand up
 	private Rigidbody2D m_Rigidbody2D;
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
+	private bool m_SlideFacingRight = true;  // For determining which way the player is currently facing.
     private bool m_JumpFacingRight;
     private Vector3 m_Velocity = Vector3.zero;
     private int m_JumpCount = 2;
     private float m_TimeToDash = 0f;
     private float m_TimeToSlide = 0f;
-
-    /*
-    [Header("Events")]
-	[Space]
-
-	public UnityEvent OnLandEvent;
-    public UnityEvent OnAirEvent;
-
-	[System.Serializable]
-	public class BoolEvent : UnityEvent<bool> { }
-
-	public BoolEvent OnCrouchEvent; */
 
     public PlayerMovement m_playerMovement;
 	private bool m_wasCrouching = false;
@@ -53,16 +42,6 @@ public class CharacterController2D : MonoBehaviour
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
         m_playerMovement = GetComponent<PlayerMovement>();
-
-        /*
-		if (OnLandEvent == null)
-			OnLandEvent = new UnityEvent();
-
-        if (OnAirEvent == null)
-            OnAirEvent = new UnityEvent();
-
-        if (OnCrouchEvent == null)
-			OnCrouchEvent = new BoolEvent(); */
 
         m_JumpCount = 0;
 	}
@@ -91,11 +70,27 @@ public class CharacterController2D : MonoBehaviour
     }
 
 
-	public void Move(float move, bool crouch, bool jump, bool dash, bool slide)
-	{
+    public void Move(float move, bool crouch, bool jump, bool dash, bool slide)
+    {
         if (m_Grounded)
         {
             m_JumpForce = 17f;
+        }
+
+        if (!slide || move == 0)
+        {
+            m_TimeToSlide = 0f;
+            if (slide)
+            {
+                m_playerMovement.OnSliding(false);
+                m_playerMovement.OnCrouching(true);
+            }
+        }
+
+        if(move == 0 && dash)
+        {
+            m_playerMovement.OnDashing(false);
+            m_TimeToDash = 0f;
         }
 
 		// If crouching, check to see if the character can stand up
@@ -104,21 +99,20 @@ public class CharacterController2D : MonoBehaviour
 			// If the character has a ceiling preventing them from standing up, keep them crouching
 			if (Physics2D.OverlapCircle(m_CeilingCheck.position, k_CeilingRadius, m_WhatIsGround))
 			{
-				crouch = true;
-			}
+                crouch = true;
+            }
 		}
 
         //only control the player if grounded or airControl is turned on
         if ((m_Grounded || m_AirControl))
 		{
-
-			// If crouching
-			if (crouch && m_Grounded)
+            // If crouching
+            if (crouch && m_Grounded)
 			{
 				if (!m_wasCrouching)
 				{
 					m_wasCrouching = true;
-                    m_playerMovement.OnCrouching(true);
+                    m_playerMovement.OnCrouchAnim(true);
 				}
 
 				// Reduce the speed by the crouchSpeed multiplier
@@ -136,7 +130,7 @@ public class CharacterController2D : MonoBehaviour
 				if (m_wasCrouching)
 				{
 					m_wasCrouching = false;
-                    m_playerMovement.OnCrouching(false);
+                    m_playerMovement.OnCrouchAnim(false);
                 }
             }
 
@@ -147,13 +141,17 @@ public class CharacterController2D : MonoBehaviour
                     // Enable the collider when not sliding
                     if (m_CrouchDisableCollider != null)
                         m_CrouchDisableCollider.enabled = true;
-                    m_playerMovement.OffSliding();
+                    m_playerMovement.OnSliding(false);
+                    m_playerMovement.OnCrouching(true);
                     m_TimeToSlide = 0f;
                 }
                 else
                 {
-                    dash = false;
+                    if (m_TimeToSlide == 0f)
+                        m_SlideFacingRight = move > 0 ? true : false;
+
                     m_TimeToSlide += Time.fixedDeltaTime;
+
                     move *= m_SlideSpeed;
 
                     // Disable one of the colliders when sliding
@@ -162,17 +160,10 @@ public class CharacterController2D : MonoBehaviour
                 }
             }
 
-            if (dash && m_Grounded && !crouch)
+            if (dash && m_Grounded && !crouch && !slide)
             {
                 move *= m_DashSpeed;
-                if (move != 0)
-                {
-                    m_TimeToDash += Time.fixedDeltaTime;
-                }
-                else
-                {
-                    m_TimeToDash = 0f;
-                }
+                m_TimeToDash += Time.fixedDeltaTime;
 
                 if (m_TimeToDash > m_TimeToDashJump)
                 {
