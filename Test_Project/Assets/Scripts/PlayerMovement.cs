@@ -48,13 +48,19 @@ public class PlayerMovement : MonoBehaviour {
             }
             else if (Input.GetButtonUp("Crouch"))
             {
-                slide = false;
+                if (slide)
+                {
+                    slide = false;      //슬라이딩 중에 앉기 키를 떼는 경우
+                    controller.ResetSlideCool();
+                }
             }
         }
         else if (slide)
         {
+            //슬라이딩 중에 대쉬 키를 떼는 경우
             crouch = true;
             slide = false;
+            controller.ResetSlideCool();
         }
         else
         {

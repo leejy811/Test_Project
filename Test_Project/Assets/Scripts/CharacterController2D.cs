@@ -12,6 +12,7 @@ public class CharacterController2D : MonoBehaviour
     [SerializeField] private float m_DashToJumpForce = 16f;
     [SerializeField] private float m_TimeToDashJump = 0.75f;
     [SerializeField] private float m_maxSlideTime = 1.5f;
+    [SerializeField] private float m_maxSlideCool = 1.5f;
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			//앉았을때의 속도 1 = 100% 이다
     [Range(0, 1)] [SerializeField] private float m_JumpSpeed = 0.625f;
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
@@ -34,6 +35,7 @@ public class CharacterController2D : MonoBehaviour
     private int m_JumpCount = 2;
     private float m_TimeToDash = 0f;
     private float m_TimeToSlide = 0f;
+    private float m_SlideCool = 10f;
 
     public PlayerMovement m_playerMovement;
 	private bool m_wasCrouching = false;
@@ -79,15 +81,18 @@ public class CharacterController2D : MonoBehaviour
 
         if (!slide || move == 0)
         {
+            m_SlideCool += Time.fixedDeltaTime;
             m_TimeToSlide = 0f;
             if (slide)
             {
+                //슬라이딩 도중에 방향키를 떼는 경우
                 m_playerMovement.OnSliding(false);
                 m_playerMovement.OnCrouching(true);
+                ResetSlideCool();
             }
         }
 
-        if(move == 0 && dash)
+        if (move == 0 && dash)
         {
             m_playerMovement.OnDashing(false);
             m_TimeToDash = 0f;
@@ -145,7 +150,7 @@ public class CharacterController2D : MonoBehaviour
                     m_playerMovement.OnCrouching(true);
                     m_TimeToSlide = 0f;
                 }
-                else
+                else if(m_SlideCool > m_maxSlideCool)
                 {
                     if (m_TimeToSlide == 0f)
                         m_SlideFacingRight = move > 0 ? true : false;
@@ -158,6 +163,8 @@ public class CharacterController2D : MonoBehaviour
                     if (m_CrouchDisableCollider != null)
                         m_CrouchDisableCollider.enabled = false;
                 }
+                else if(m_SlideCool < m_maxSlideCool)
+                    m_playerMovement.OnSliding(false);
             }
 
             if (dash && m_Grounded && !crouch && !slide)
@@ -234,6 +241,10 @@ public class CharacterController2D : MonoBehaviour
         }
     }
 
+    public void ResetSlideCool()
+    {
+        m_SlideCool = 0f;
+    }
 
 	private void Flip()
 	{

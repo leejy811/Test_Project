@@ -536,6 +536,7 @@ MonoBehaviour:
   m_DashToJumpForce: 16
   m_TimeToDashJump: 0.75
   m_maxSlideTime: 5
+  m_maxSlideCool: 0.3
   m_CrouchSpeed: 0.4
   m_JumpSpeed: 0.625
   m_DashSpeed: 0.5
