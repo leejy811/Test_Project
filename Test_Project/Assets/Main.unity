@@ -549,7 +549,13 @@ MonoBehaviour:
   m_GroundCheck: {fileID: 1007352555}
   m_CeilingCheck: {fileID: 1574803884}
   m_CrouchDisableCollider: {fileID: 820667356}
-  m_playerMovement: {fileID: 820667357}
+  animator: {fileID: 820667358}
+  runSpeed: 40
+  horizontalMove: 0
+  jump: 0
+  crouch: 0
+  dash: 0
+  slide: 0
 --- !u!58 &820667355
 CircleCollider2D:
   m_ObjectHideFlags: 0

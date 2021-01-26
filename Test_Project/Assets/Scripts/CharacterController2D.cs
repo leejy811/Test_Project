@@ -18,18 +18,18 @@ public class CharacterController2D : MonoBehaviour
     [Range(0, 3)] [SerializeField] private float m_DashSpeed = 1.5f;            //대쉬할때의 속도 1 = 100% 이다
     [Range(0, 3)] [SerializeField] private float m_SlideSpeed = 2f;            //슬라이딩할때의 속도 1 = 100% 이다
     [Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	//움직임이 얼마나 부드러운지에 대한 변수
-	[SerializeField] private bool m_AirControl = false;							//공중에서 플레이어를 움직일 수 있는가
-	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
-	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
-	[SerializeField] private Transform m_CeilingCheck;                          // A position marking where to check for ceilings
-    [SerializeField] private Collider2D m_CrouchDisableCollider;				// A collider that will be disabled when crouching
+	[SerializeField] private bool m_AirControl = false;                         //공중에서 플레이어를 움직일 수 있는가
+    [SerializeField] private LayerMask m_WhatIsGround;
+	[SerializeField] private Transform m_GroundCheck;
+	[SerializeField] private Transform m_CeilingCheck;
+    [SerializeField] private Collider2D m_CrouchDisableCollider;
 
-	const float k_GroundedRadius = .2f; // Radius of the overlap circle to determine if grounded
-	private bool m_Grounded;            // Whether or not the player is grounded.
-	const float k_CeilingRadius = .2f; // Radius of the overlap circle to determine if the player can stand up
+	const float k_GroundedRadius = .2f;
+	private bool m_Grounded;
+	const float k_CeilingRadius = .2f;
 	private Rigidbody2D m_Rigidbody2D;
-	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
-	private bool m_SlideFacingRight = true;  // For determining which way the player is currently facing.
+	private bool m_FacingRight = true;
+	private bool m_SlideFacingRight = true;
     private bool m_JumpFacingRight;
     private Vector3 m_Velocity = Vector3.zero;
     private int m_JumpCount = 2;
@@ -37,24 +37,78 @@ public class CharacterController2D : MonoBehaviour
     private float m_TimeToSlide = 0f;
     private float m_SlideCool = 10f;
 
-    public PlayerMovement m_playerMovement;
 	private bool m_wasCrouching = false;
 
-	private void Awake()
+    public Animator animator;
+    public float runSpeed = 40f;
+
+    [SerializeField] float horizontalMove = 0f;
+    [SerializeField] bool jump = false;
+    [SerializeField] bool crouch = false;
+    [SerializeField] bool dash = false;
+    [SerializeField] bool slide = false;
+
+    private void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
-        m_playerMovement = GetComponent<PlayerMovement>();
 
         m_JumpCount = 0;
 	}
 
-	private void FixedUpdate()
+    void Update()
+    {
+
+        horizontalMove = Input.GetAxisRaw("Horizontal") * runSpeed;
+
+        animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
+
+        if (Input.GetButtonDown("Jump"))
+        {
+            jump = true;
+            animator.SetBool("IsJumping", true);
+        }
+
+        if (!crouch)
+        {
+            if (Input.GetKeyDown(KeyCode.LeftShift))
+                dash = true;
+            else if (Input.GetKeyUp(KeyCode.LeftShift))
+                dash = false;
+        }
+
+        if (dash)
+        {
+            if (Input.GetButtonDown("Crouch"))
+                slide = true;
+            else if (Input.GetButtonUp("Crouch"))
+            {
+                if (slide)
+                {
+                    slide = false;      //슬라이딩 중에 앉기 키를 떼는 경우
+                    m_SlideCool = 0f;
+                }
+            }
+        }
+        else if (slide)
+        {
+            crouch = true;
+            slide = false;
+            m_SlideCool = 0f;
+        }
+        else
+        {
+            if (Input.GetButtonDown("Crouch"))
+                crouch = true;
+            else if (Input.GetButtonUp("Crouch"))
+                crouch = false;
+        }
+    }
+
+    private void FixedUpdate()
 	{
 		bool wasGrounded = m_Grounded;
 		m_Grounded = false;
 
-		// The player is grounded if a circlecast to the groundcheck position hits anything designated as ground
-		// This can be done using layers instead but Sample Assets will not overwrite your project settings.
 		Collider2D[] colliders = Physics2D.OverlapCircleAll(m_GroundCheck.position, k_GroundedRadius, m_WhatIsGround);
 		for (int i = 0; i < colliders.Length; i++)
 		{
@@ -63,197 +117,184 @@ public class CharacterController2D : MonoBehaviour
 				m_Grounded = true;
                 m_JumpCount = 2;
                 if (!wasGrounded)
-                    m_playerMovement.OnLanding();
+                    animator.SetBool("IsJumping", false);
             }
-		}
+        }
 
         if (!m_Grounded)
-            m_playerMovement.OnAir();
+            animator.SetBool("IsJumping", true);
+
+        Move(horizontalMove * Time.fixedDeltaTime, crouch);
+        jump = false;
     }
 
 
-    public void Move(float move, bool crouch, bool jump, bool dash, bool slide)
+    void Move(float move, bool isCrouch)
     {
         if (m_Grounded)
-        {
             m_JumpForce = 17f;
-        }
 
         if (!slide || move == 0)
         {
             m_SlideCool += Time.fixedDeltaTime;
             m_TimeToSlide = 0f;
+
             if (slide)
             {
                 //슬라이딩 도중에 방향키를 떼는 경우
-                m_playerMovement.OnSliding(false);
-                m_playerMovement.OnCrouching(true);
-                ResetSlideCool();
+                slide = false;
+                crouch = true;
+                m_SlideCool = 0f;
             }
         }
 
-        if (move == 0 && dash)
+        if (dash && move == 0)
         {
-            m_playerMovement.OnDashing(false);
+            dash = false;
             m_TimeToDash = 0f;
         }
 
-		// If crouching, check to see if the character can stand up
-		if (!crouch && !slide)
-		{
-			// If the character has a ceiling preventing them from standing up, keep them crouching
-			if (Physics2D.OverlapCircle(m_CeilingCheck.position, k_CeilingRadius, m_WhatIsGround))
-			{
-                crouch = true;
-            }
-		}
+        if (!isCrouch && !slide)
+            if (Physics2D.OverlapCircle(m_CeilingCheck.position, k_CeilingRadius, m_WhatIsGround))
+                isCrouch = true;
 
-        //only control the player if grounded or airControl is turned on
         if ((m_Grounded || m_AirControl))
 		{
-            // If crouching
-            if (crouch && m_Grounded)
-			{
-				if (!m_wasCrouching)
-				{
-					m_wasCrouching = true;
-                    m_playerMovement.OnCrouchAnim(true);
-				}
+            move *= ImpleCrouch(move, isCrouch);
 
-				// Reduce the speed by the crouchSpeed multiplier
-				move *= m_CrouchSpeed;
+            move *= ImpleSlide(move);
 
-				// Disable one of the colliders when crouching
-				if (m_CrouchDisableCollider != null)
-					m_CrouchDisableCollider.enabled = false;
-			} else
-			{
-				// Enable the collider when not crouching
-				if (m_CrouchDisableCollider != null)
-					m_CrouchDisableCollider.enabled = true;
+            move *= ImpleDash(move, isCrouch);
 
-				if (m_wasCrouching)
-				{
-					m_wasCrouching = false;
-                    m_playerMovement.OnCrouchAnim(false);
-                }
-            }
-
-            if (slide && m_Grounded)
-            {
-                if (m_TimeToSlide > m_maxSlideTime)
-                {
-                    // Enable the collider when not sliding
-                    if (m_CrouchDisableCollider != null)
-                        m_CrouchDisableCollider.enabled = true;
-                    m_playerMovement.OnSliding(false);
-                    m_playerMovement.OnCrouching(true);
-                    m_TimeToSlide = 0f;
-                }
-                else if(m_SlideCool > m_maxSlideCool)
-                {
-                    if (m_TimeToSlide == 0f)
-                        m_SlideFacingRight = move > 0 ? true : false;
-
-                    m_TimeToSlide += Time.fixedDeltaTime;
-
-                    move *= m_SlideSpeed;
-
-                    // Disable one of the colliders when sliding
-                    if (m_CrouchDisableCollider != null)
-                        m_CrouchDisableCollider.enabled = false;
-                }
-                else if(m_SlideCool < m_maxSlideCool)
-                    m_playerMovement.OnSliding(false);
-            }
-
-            if (dash && m_Grounded && !crouch && !slide)
-            {
-                move *= m_DashSpeed;
-                m_TimeToDash += Time.fixedDeltaTime;
-
-                if (m_TimeToDash > m_TimeToDashJump)
-                {
-                    m_JumpForce = m_DashToJumpForce;
-                }
-            }
-            else if(!dash)
-            {
-                m_TimeToDash = 0f;
-                m_JumpForce = 17f;
-            }
-
-            if((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
-            {
+            if ((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
                 move *= m_JumpSpeed;
-            }
 
-            // Move the character by finding the target velocity
             Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
-			// And then smoothing it out and applying it to the character
 			m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
 
-			// If the input is moving the player right and the player is facing left...
 			if (move > 0 && !m_FacingRight)
-			{
-				// ... flip the player.
 				Flip();
-			}
-			// Otherwise if the input is moving the player left and the player is facing right...
 			else if (move < 0 && m_FacingRight)
-			{
-				// ... flip the player.
 				Flip();
-			}
 		}
 
-        // If the player should jump...
+        ImpleJump(move);
+    }
+
+	private void Flip()
+	{
+		m_FacingRight = !m_FacingRight;
+
+		Vector3 theScale = transform.localScale;
+		theScale.x *= -1;
+		transform.localScale = theScale;
+	}
+
+    private float ImpleCrouch(float move, bool isCrouch)
+    {
+        if (isCrouch && m_Grounded)
+        {
+            if (!m_wasCrouching)
+            {
+                m_wasCrouching = true;
+                animator.SetBool("IsCrouching", true);
+            }
+
+            if (m_CrouchDisableCollider != null)
+                m_CrouchDisableCollider.enabled = false;
+
+            return m_CrouchSpeed;
+        }
+        else
+        {
+            if (m_CrouchDisableCollider != null)
+                m_CrouchDisableCollider.enabled = true;
+
+            if (m_wasCrouching)
+            {
+                m_wasCrouching = false;
+                animator.SetBool("IsCrouching", false);
+            }
+
+            return 1f;
+        }
+    }
+
+    private float ImpleSlide(float move)
+    {
+        if (slide && m_Grounded)
+        {
+            if (m_TimeToSlide > m_maxSlideTime)
+            {
+                if (m_CrouchDisableCollider != null)
+                    m_CrouchDisableCollider.enabled = true;
+                slide = false;
+                crouch = true;
+                m_TimeToSlide = 0f;
+            }
+            else if (m_SlideCool > m_maxSlideCool)
+            {
+                if (m_TimeToSlide == 0f)
+                    m_SlideFacingRight = move > 0 ? true : false;
+
+                m_TimeToSlide += Time.fixedDeltaTime;
+
+                if (m_CrouchDisableCollider != null)
+                    m_CrouchDisableCollider.enabled = false;
+
+                return m_SlideSpeed;
+            }
+            else if (m_SlideCool < m_maxSlideCool)
+                slide = false;
+        }
+
+        return 1f;
+    }
+
+    private float ImpleDash(float move, bool isCrouch)
+    {
+        if (dash && m_Grounded && !isCrouch && !slide)
+        {
+            m_TimeToDash += Time.fixedDeltaTime;
+
+            if (m_TimeToDash > m_TimeToDashJump)
+                m_JumpForce = m_DashToJumpForce;
+
+            return m_DashSpeed;
+        }
+        else if (!dash)
+        {
+            m_TimeToDash = 0f;
+            m_JumpForce = 17f;
+        }
+
+        return 1f;
+    }
+
+    private void ImpleJump(float move)
+    {
         if (((m_Grounded && jump) || (m_JumpCount == 1 && jump)) && !slide)
         {
-            // Add a vertical force to the player.
             m_Grounded = false;
             if (m_JumpCount == 2)
             {
                 m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_JumpForce);
                 if (move > 0)
-                {
                     m_JumpFacingRight = true;
-                }
                 else if (move < 0)
-                {
                     m_JumpFacingRight = false;
-                }
                 m_TimeToDash = 0f;
             }
-            else if(m_JumpCount == 1)
+            else if (m_JumpCount == 1)
             {
                 if (m_FacingRight)
-                {
                     m_Rigidbody2D.AddForce(Vector2.right * m_JumpDashForce, ForceMode2D.Impulse);
-                }
                 else if (!m_FacingRight)
-                {
                     m_Rigidbody2D.AddForce(Vector2.left * m_JumpDashForce, ForceMode2D.Impulse);
-                }
+
                 m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
             }
             m_JumpCount--;
         }
     }
-
-    public void ResetSlideCool()
-    {
-        m_SlideCool = 0f;
-    }
-
-	private void Flip()
-	{
-		// Switch the way the player is labelled as facing.
-		m_FacingRight = !m_FacingRight;
-
-		// Multiply the player's x local scale by -1.
-		Vector3 theScale = transform.localScale;
-		theScale.x *= -1;
-		transform.localScale = theScale;
-	}
 }
