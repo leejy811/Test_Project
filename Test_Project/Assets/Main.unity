@@ -533,7 +533,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_JumpForce: 17
   m_JumpDashForce: 25
-  m_DashToJumpForce: 16
+  m_DashToJumpForce: 4
   m_TimeToDashJump: 0.75
   m_maxSlideTime: 5
   m_maxSlideCool: 0.3
@@ -542,13 +542,13 @@ MonoBehaviour:
   m_DashSpeed: 0.5
   m_SlideSpeed: 2
   m_MovementSmoothing: 0.05
-  m_AirControl: 1
   m_WhatIsGround:
     serializedVersion: 2
     m_Bits: 567
   m_GroundCheck: {fileID: 1007352555}
   m_CeilingCheck: {fileID: 1574803884}
   m_CrouchDisableCollider: {fileID: 820667356}
+  AirControl: 1
   animator: {fileID: 820667358}
   runSpeed: 40
   horizontalMove: 0
@@ -610,14 +610,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5273cd41ac3c5246965ef9469d10dd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  controller: {fileID: 820667354}
-  animator: {fileID: 820667358}
-  runSpeed: 40
-  horizontalMove: 0
-  jump: 0
-  crouch: 0
-  dash: 0
-  slide: 0
 --- !u!95 &820667358
 Animator:
   serializedVersion: 3

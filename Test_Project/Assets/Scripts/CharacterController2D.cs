@@ -32,10 +32,12 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private Transform m_GroundCheck;                           //땅인지를 체크하는 지점
 	[SerializeField] private Transform m_CeilingCheck;                          //위에 천장이 있는지 체크하는 변수
     [SerializeField] private Collider2D m_CrouchDisableCollider;                //앉기를 했을때 없어지는 콜라이더
+    [SerializeField] private bool AirControl = true;                            //공중에서 움직일 수 있는지를 체크하는 변수
+    private bool m_Grounded;                                                    //현재 땅에 있는지를 체크하는 변수
+    private bool m_Celling = false;                                             //현재 위에 천장이 있는지를 체크하는 변수
+    private bool m_wasCrouching = false;                                        //앉기 중이었는지 체크하는 변수
     const float k_GroundedRadius = .2f;                                         //땅인지를 체크하는 반경
 	const float k_CeilingRadius = .2f;                                          //위에 천장이 있는지를 체크하는 반경
-    private bool m_Grounded;
-    private bool m_wasCrouching = false;
 
     //플레이어가 어디를 보고 있는지를 판단하는 변수들(true가 오른쪽 false가 왼쪽)
     private bool m_FacingRight = true;                                          //플레이어가 어디를 보고 있는지를 판단하는 변수
@@ -77,7 +79,7 @@ public class CharacterController2D : MonoBehaviour
         animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
 
         //점프키를 입력받고 애니메이션을 동작시킴
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetButtonDown("Jump") && !crouch && !slide && !m_Celling)
         {
             jump = true;
             animator.SetBool("IsJumping", true);
@@ -165,6 +167,10 @@ public class CharacterController2D : MonoBehaviour
         if (m_Grounded && m_JumpForce != 17f)
             m_JumpForce -= m_DashToJumpForce;
 
+        //만약 공중 조작이 불가능한 상환에서 땅에 닿았거나 앉기키가 눌리지 않았다면 공중조작이 가능해진다.
+        if ((m_Grounded || !isCrouch) && !AirControl)
+            AirControl = true;
+
         //슬라이드 상태가 아니거나 멈춰있는 상태면
         if (!slide || move == 0)
         {
@@ -190,27 +196,37 @@ public class CharacterController2D : MonoBehaviour
         //앉기 상태가 아니고 슬라이딩 상태가 아닐때 천장에 무언가가 있다면 앉기 상태로 변경
         if (!isCrouch && !slide)
             if (Physics2D.OverlapCircle(m_CeilingCheck.position, k_CeilingRadius, m_WhatIsGround))
+            {
+                m_Celling = true;
                 isCrouch = true;
+            }
+            else
+                m_Celling = false;
+        else
+            m_Celling = false;
 
-        move *= ImpleCrouch(move, isCrouch);        //앉기를 구현하는 함수 ImpleCrouch를 호출해 move를 변경
+        if (m_Grounded || AirControl)
+        {
+            move *= ImpleCrouch(move, isCrouch);        //앉기를 구현하는 함수 ImpleCrouch를 호출해 move를 변경
 
-        move *= ImpleSlide(move);                   //슬라이딩를 구현하는 함수 ImpleSlide를 호출해 move를 변경
+            move *= ImpleSlide(move);                   //슬라이딩를 구현하는 함수 ImpleSlide를 호출해 move를 변경
 
-        move *= ImpleDash(move, isCrouch);          //대쉬를 구현하는 함수 ImpleDash를 호출해 move를 변경
+            move *= ImpleDash(move, isCrouch);          //대쉬를 구현하는 함수 ImpleDash를 호출해 move를 변경
 
-        //플레이어가 점프한 방향의 반대 방향으로 움직인다면 느린 속도로 움직임
-        if ((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
-            move *= m_JumpSpeed;
+            //플레이어가 점프한 방향의 반대 방향으로 움직인다면 느린 속도로 움직임
+            if ((!m_Grounded && move < 0 && m_JumpFacingRight) || (!m_Grounded && move > 0 && !m_JumpFacingRight))
+                move *= m_JumpSpeed;
 
-        //플레이어가 원래의 속도에서 targetVelocity의 속도로 속도가 점차 증가함
-        Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
-        m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
+            //플레이어가 원래의 속도에서 targetVelocity의 속도로 속도가 점차 증가함
+            Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
+            m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
 
-        //플레이어가 어딜 바라보냐에 따라 방향을 바꾸는 Flip함수 호출
-        if (move > 0 && !m_FacingRight)
-            Flip();
-        else if (move < 0 && m_FacingRight)
-            Flip();
+            //플레이어가 어딜 바라보냐에 따라 방향을 바꾸는 Flip함수 호출
+            if (move > 0 && !m_FacingRight)
+                Flip();
+            else if (move < 0 && m_FacingRight)
+                Flip();
+        }
 
         ImpleJump(move);        //점프를 구현하는 함수 ImpleJump를 호출
     }
@@ -244,6 +260,24 @@ public class CharacterController2D : MonoBehaviour
                 m_CrouchDisableCollider.enabled = false;
 
             return m_CrouchSpeed;       //m_CrouchSpeed를 반환(move를 m_CrouchSpeed로 바꿈)
+        }
+        //공중에서 앉기 키를 누른경우(공중에서 웅크리기 기능)
+        else if(isCrouch && !m_Grounded)
+        {
+            //이전에 앉기 상태였다면 애니메이션을 취소하고 false상태로 바꿈
+            if (m_wasCrouching)
+            {
+                m_wasCrouching = false;
+                animator.SetBool("IsCrouching", false);
+            }
+
+            //앉기 상태가 되어 위의 콜라이더를 false 상태로 만듬
+            if (m_CrouchDisableCollider != null)
+                m_CrouchDisableCollider.enabled = false;
+
+            AirControl = false;             //공중에서 이동 불가
+
+            return 1f;      //1을 반환(move를 그대로 유지)
         }
         //아닌 경우
         else
@@ -330,8 +364,8 @@ public class CharacterController2D : MonoBehaviour
     //점프를 구현하는 함수 ImpleJump를 호출
     private void ImpleJump(float move)
     {
-        //땅에닿아있거나 점프를 한번한 상태에서 점프키가 눌리고 슬라이딩 상태가 아니라면
-        if ((m_Grounded || m_JumpCount == 1) && jump && !slide)
+        //땅에닿아있거나 점프를 한번한 상태에서 점프키가 눌리고
+        if ((m_Grounded || m_JumpCount == 1) && jump)
         {
             m_Grounded = false;         //땅에 있는 상태가 아님
             //만약 점프를 한번한 상태라면
